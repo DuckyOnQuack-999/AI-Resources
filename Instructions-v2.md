@@ -1,6 +1,3 @@
-# Merged and Combined Instructions
-
-These instructions represent a complete merger of the original and enhanced versions, omitting nothing, and are designed to guide an advanced content processing and transformation system.
 
 ---
 
