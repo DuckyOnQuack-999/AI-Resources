@@ -1,7 +1,7 @@
 DuckyCoder v4 Prompt for Cursor IDE
 Objective
-Process the provided Arch-Linux-Toolbox.sh Bash script using the DuckyCoder v4 framework within the Cursor IDE. Perform a comprehensive analysis, apply enhancements (e.g., input validation, logging, UI transformation), generate a web-based UI using React, and produce documentation and CI/CD integrations. Ensure all changes are secure, compliant with GDPR/ISO-27001, and optimized for performance and usability.
-Input: Arch-Linux-Toolbox.sh
+Process the provided {file} Bash script using the DuckyCoder v4 framework within the Cursor IDE. Perform a comprehensive analysis, apply enhancements (e.g., input validation, logging, UI transformation), generate a web-based UI using React, and produce documentation and CI/CD integrations. Ensure all changes are secure, compliant with GDPR/ISO-27001, and optimized for performance and usability.
+Input: {file}
 Below is the Bash script to process (abridged for brevity; assume the full script from prior interactions is available):
 # Hardware Management Functions
 manage_hardware() {
@@ -176,7 +176,7 @@ modes:
   debug_assistant: true
 
 Prior Interactions
-Previous analyses of Arch-Linux-Toolbox.sh included:
+Previous analyses of {file} included:
 
 Input Validation:validate_input() {
     local input=$1
@@ -203,7 +203,7 @@ Web UI: React-based CPUManager.tsx for manage_cpu.
 CI/CD: GitHub Actions workflow for validation.
 
 Instructions for Cursor IDE
-Using the Cursor IDE, process Arch-Linux-Toolbox.sh with the following tasks:
+Using the Cursor IDE, process {file} with the following tasks:
 
 Analyze the Script:
 
@@ -417,9 +417,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Run Shellcheck
-        run: shellcheck Arch-Linux-Toolbox.sh
+        run: shellcheck {file}
       - name: Test Installation
-        run: bash Arch-Linux-Toolbox.sh --test
+        run: bash {file} --test
 
 
 
@@ -474,11 +474,11 @@ Vercel: Deploy React UI.
 
 Execution:
 
-Save the updated script as Arch-Linux-Toolbox.sh.
+Save the updated script as {file}.
 Deploy the React UI:vercel deploy --prod
 
 
-Test the script:bash Arch-Linux-Toolbox.sh
+Test the script:bash {file}
 
 
 
@@ -486,7 +486,7 @@ Test the script:bash Arch-Linux-Toolbox.sh
 
 Deliverables
 
-Updated Script: Enhanced Arch-Linux-Toolbox.sh with validation, logging, TUI, and performance monitoring.
+Updated Script: Enhanced {file} with validation, logging, TUI, and performance monitoring.
 React UI: CPUManager.tsx and GPUManager.tsx for web-based management.
 Documentation: Markdown files for manage_cpu and manage_gpu.
 CI/CD Workflow: GitHub Actions configuration.
