@@ -1,0 +1,8 @@
+version: "6.0.0"
+export_config:
+  default_formats: ["markdown","html","json"]
+  output_directory: "/home/duckyonquack999/GitHub-Repositories/AI-Resources/DuckyCoder_v7_output"
+  include_metadata: true
+  compression: false
+logging:
+  level: "INFO"

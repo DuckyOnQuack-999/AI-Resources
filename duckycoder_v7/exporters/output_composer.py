@@ -48,13 +48,6 @@ try:
 except ImportError:
     HAS_GIT = False
 
-# v0 Integration imports  
-try:
-    from v0_integration.mdx_generator import MDXGenerator
-    HAS_V0_INTEGRATION = True
-except ImportError:
-    HAS_V0_INTEGRATION = False
-
 
 @dataclass
 class OutputSection:
@@ -101,13 +94,6 @@ class OutputComposer:
             'supports_interactive': False,
             'ci_cd_compatible': True
         },
-        'mdx': {
-            'extension': '.mdx',
-            'mime_type': 'text/mdx',
-            'supports_interactive': True,
-            'ci_cd_compatible': True,
-            'v0_compatible': True
-        },
         'html': {
             'extension': '.html',
             'mime_type': 'text/html',
@@ -149,42 +135,14 @@ class OutputComposer:
             'mime_type': 'text/plain',
             'supports_interactive': False,
             'ci_cd_compatible': True
-        },
-        'react_project': {
-            'extension': '.jsx',
-            'mime_type': 'text/jsx',
-            'supports_interactive': True,
-            'ci_cd_compatible': True,
-            'v0_compatible': True
         }
     }
 
-    # MDX component templates for v0 integration
+    # MDX component templates
     MDX_COMPONENTS = {
         'code_block': '''```{language}
 {code}
 ```''',
-        'react_project': '''<ReactProject id="{project_id}">
-```tsx file="{filename}"
-{code}
-```
-</ReactProject>''',
-        'nodejs_executable': '''```js
-{code}
-```''',
-        'python_executable': '''```py
-{code}
-```''',
-        'html_content': '''```html
-{code}
-```''',
-        'mermaid_diagram': '''```mermaid
-{diagram_code}
-```''',
-        'linear_process_flow': '''<LinearProcessFlow>
-{content}
-</LinearProcessFlow>''',
-        'math_block': '''$${latex}$$''',
         'interactive_chart': '''<Chart type="{chart_type}" data={{data}} />''',
         'collapsible_section': '''<Details summary="{title}">
 {content}
@@ -287,7 +245,6 @@ security_report:
         """Initialize the output composer."""
         self.config = config
         self.export_config = config.get('export_config', {})
-        self.v0_config = config.get('v0_integration', {})
         self.logger = logging.getLogger(__name__)
 
         # Output settings
@@ -295,15 +252,6 @@ security_report:
         self.include_metadata = self.export_config.get('include_metadata', True)
         self.compression = self.export_config.get('compression', False)
         self.version_control = self.export_config.get('version_control', True)
-
-        # v0 Integration settings
-        self.v0_enabled = self.v0_config.get('enabled', True)
-        self.mdx_support = self.v0_config.get('mdx_support', True)
-        
-        # Initialize v0 MDX generator if available
-        self.mdx_generator = None
-        if HAS_V0_INTEGRATION and self.v0_enabled:
-            self.mdx_generator = MDXGenerator(config)
 
         # Initialize templates
         self._init_templates()
@@ -553,8 +501,6 @@ security_report:
             # Export based on format
             if format_type == 'markdown':
                 await self._export_markdown(output_data, file_path)
-            elif format_type == 'mdx':
-                await self._export_mdx(output_data, file_path)
             elif format_type == 'html':
                 await self._export_html(output_data, file_path)
             elif format_type == 'json':
@@ -569,8 +515,6 @@ security_report:
                 await self._export_codebase(output_data, file_path)
             elif format_type == 'git_diff':
                 await self._export_git_diff(output_data, file_path)
-            elif format_type == 'react_project':
-                await self._export_react_project(output_data, file_path)
             else:
                 raise ValueError(f"Export handler not implemented for {format_type}")
 
@@ -867,195 +811,6 @@ security_report:
 
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(content)
-
-    async def _export_mdx(self, output_data: Dict[str, Any], file_path: str):
-        """Export to MDX format with v0 integration."""
-        if self.mdx_generator and self.mdx_support:
-            # Convert output sections to MDX-compatible format
-            mdx_sections = []
-            
-            for section in output_data.get('sections', []):
-                section_data = {
-                    'type': self._determine_mdx_section_type(section),
-                    'title': section['title'],
-                    'content': section['content'],
-                    'metadata': section.get('metadata', {})
-                }
-                mdx_sections.append(section_data)
-            
-            # Generate MDX content using v0 integration
-            mdx_content = await self.mdx_generator.generate_mdx_response(
-                mdx_sections, include_v0_features=True
-            )
-            
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(mdx_content)
-        else:
-            # Fallback to markdown with MDX components
-            await self._export_markdown_with_mdx_components(output_data, file_path)
-
-    def _determine_mdx_section_type(self, section: Dict[str, Any]) -> str:
-        """Determine the appropriate MDX section type for v0 integration."""
-        section_type = section.get('section_type', 'markdown')
-        
-        # Map section types to MDX types
-        type_mapping = {
-            'summary': 'markdown',
-            'analysis': 'markdown',
-            'enhancements': 'code',
-            'ui_mockups': 'react_project',
-            'performance': 'diagram',
-            'security': 'markdown'
-        }
-        
-        return type_mapping.get(section_type, 'markdown')
-
-    async def _export_markdown_with_mdx_components(self, output_data: Dict[str, Any], file_path: str):
-        """Export markdown with enhanced MDX components."""
-        content = f"# {output_data.get('title', 'DuckyCoder v6 Report')}\n\n"
-        content += f"**Generated:** {output_data.get('generation_time', datetime.now())}\n\n"
-        
-        # Add summary with interactive elements
-        if output_data.get('summary'):
-            content += "## Summary\n\n"
-            content += f"{output_data['summary']}\n\n"
-        
-        # Process sections with MDX enhancements
-        for section in output_data.get('sections', []):
-            content += f"## {section['title']}\n\n"
-            
-            section_content = section['content']
-            section_type = section.get('section_type', 'markdown')
-            
-            # Enhance specific section types with MDX components
-            if section_type == 'ui_mockups':
-                content += self._enhance_ui_section_with_mdx(section_content)
-            elif section_type == 'performance':
-                content += self._enhance_performance_section_with_mdx(section_content)
-            elif section_type == 'enhancements' and 'code' in section_content.lower():
-                content += self._enhance_code_section_with_mdx(section_content)
-            else:
-                content += section_content
-            
-            content += "\n\n"
-        
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(content)
-
-    def _enhance_ui_section_with_mdx(self, content: str) -> str:
-        """Enhance UI sections with React Project components."""
-        # Check if content contains React/JSX code
-        if 'jsx' in content.lower() or 'tsx' in content.lower() or 'react' in content.lower():
-            # Extract code blocks and wrap in ReactProject
-            import re
-            code_blocks = re.findall(r'```(?:jsx|tsx|javascript|typescript)\n(.*?)\n```', content, re.DOTALL)
-            
-            enhanced_content = content
-            for i, code_block in enumerate(code_blocks):
-                project_component = self.MDX_COMPONENTS['react_project'].format(
-                    project_id=f"ui_project_{i}",
-                    filename="component.tsx",
-                    code=code_block.strip()
-                )
-                # Replace the original code block
-                original_pattern = f'```(?:jsx|tsx|javascript|typescript)\n{re.escape(code_block)}\n```'
-                enhanced_content = re.sub(original_pattern, project_component, enhanced_content, count=1)
-            
-            return enhanced_content
-        
-        return content
-
-    def _enhance_performance_section_with_mdx(self, content: str) -> str:
-        """Enhance performance sections with interactive charts."""
-        # Add performance visualization components
-        if 'metrics' in content.lower() or 'performance' in content.lower():
-            return f"""<Alert type="info">
-📊 **Performance Analysis Available**
-
-Interactive performance visualizations and metrics are displayed below.
-</Alert>
-
-{content}
-
-<Progress value={{85}} max={{100}} />
-*Overall Performance Score: 85%*
-"""
-        return content
-
-    def _enhance_code_section_with_mdx(self, content: str) -> str:
-        """Enhance code sections with executable code blocks."""
-        # Convert code blocks to executable formats
-        import re
-        
-        # Handle Python code
-        python_blocks = re.findall(r'```python\n(.*?)\n```', content, re.DOTALL)
-        enhanced_content = content
-        
-        for code_block in python_blocks:
-            executable_block = self.MDX_COMPONENTS['python_executable'].format(code=code_block.strip())
-            original_pattern = f'```python\n{re.escape(code_block)}\n```'
-            enhanced_content = re.sub(original_pattern, executable_block, enhanced_content, count=1)
-        
-        # Handle JavaScript/Node.js code
-        js_blocks = re.findall(r'```(?:javascript|js|node)\n(.*?)\n```', content, re.DOTALL)
-        
-        for code_block in js_blocks:
-            executable_block = self.MDX_COMPONENTS['nodejs_executable'].format(code=code_block.strip())
-            original_pattern = f'```(?:javascript|js|node)\n{re.escape(code_block)}\n```'
-            enhanced_content = re.sub(original_pattern, executable_block, enhanced_content, count=1)
-        
-        return enhanced_content
-
-    async def _export_react_project(self, output_data: Dict[str, Any], file_path: str):
-        """Export as a complete React project structure."""
-        # Create React project structure
-        project_content = f"""// DuckyCoder v6 Generated React Project
-import React from 'react';
-import {{ Button }} from "@/components/ui/button";
-import {{ Card, CardContent, CardHeader, CardTitle }} from "@/components/ui/card";
-import {{ Badge }} from "@/components/ui/badge";
-
-export default function DuckyCoderReport() {{
-  const reportData = {json.dumps(output_data, indent=2, default=str)};
-  
-  return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">{output_data.get('title', 'DuckyCoder v6 Report')}</h1>
-        <p className="text-muted-foreground">
-          Generated: {output_data.get('generation_time', datetime.now())}
-        </p>
-      </div>
-      
-      {{reportData.sections?.map((section, index) => (
-        <Card key={{index}} className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              {{section.title}}
-              {{section.interactive && <Badge variant="secondary">Interactive</Badge>}}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="prose max-w-none">
-              {{/* Section content would be rendered here */}}
-              <p>{{section.content.substring(0, 200)}}...</p>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-      
-      <div className="mt-8 text-center">
-        <Button onClick={{() => window.print()}}>
-          Export Report
-        </Button>
-      </div>
-    </div>
-  );
-}}
-"""
-        
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(project_content)
 
     async def _export_html(self, output_data: Dict[str, Any], file_path: str):
         """Export to HTML format."""

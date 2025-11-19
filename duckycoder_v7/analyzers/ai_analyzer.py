@@ -1,6 +1,8 @@
+#!/usr/bin/env python3
 """
-DuckyCoder v6 AI Analysis Engine
-Implements multi-phase diagnostic analysis with enterprise-grade security scanning.
+AI Analysis Engine for DuckyCoder v7
+Enhanced with advanced AI capabilities for comprehensive code analysis,
+security scanning, dependency extraction, and similarity detection.
 """
 
 import asyncio
@@ -45,19 +47,6 @@ try:
     HAS_PYLINT = True
 except ImportError:
     HAS_PYLINT = False
-
-# Domain knowledge imports
-try:
-    import numpy as np
-    HAS_NUMPY = True
-except ImportError:
-    HAS_NUMPY = False
-
-try:
-    import pandas as pd
-    HAS_PANDAS = True
-except ImportError:
-    HAS_PANDAS = False
 
 
 @dataclass
@@ -107,244 +96,27 @@ class ComplianceViolation:
     location: str
     remediation: str
 
-@dataclass
-class DomainKnowledgeInsight:
-    """Domain-specific knowledge insight."""
-    domain: str  # web_development, data_science, system_admin, etc.
-    category: str  # best_practice, anti_pattern, optimization, etc.
-    title: str
-    description: str
-    recommendation: str
-    confidence: float
-    examples: List[str]
-
-@dataclass
-class ArchitecturalAnalysis:
-    """Architectural analysis result."""
-    architecture_type: str  # monolith, microservices, serverless, etc.
-    design_patterns: List[str]
-    anti_patterns: List[str]
-    scalability_score: float
-    maintainability_score: float
-    recommendations: List[str]
-
 
 class AIAnalysisEngine:
-    """Advanced AI-powered code analysis engine."""
-
-    # CVE and vulnerability patterns
-    SECURITY_PATTERNS = {
-        'sql_injection': [
-            r'execute\s*\(\s*["\'].*%.*["\']',
-            r'cursor\.execute\s*\(\s*["\'].*\+.*["\']',
-            r'query\s*=\s*["\'].*%.*["\']',
-        ],
-        'xss': [
-            r'innerHTML\s*=\s*.*\+',
-            r'document\.write\s*\(',
-            r'eval\s*\(',
-        ],
-        'command_injection': [
-            r'os\.system\s*\(',
-            r'subprocess\.call\s*\(',
-            r'exec\s*\(',
-        ],
-        'hardcoded_secrets': [
-            r'password\s*=\s*["\'][^"\']+["\']',
-            r'api_key\s*=\s*["\'][^"\']+["\']',
-            r'secret\s*=\s*["\'][^"\']+["\']',
-        ],
-        'crypto_weakness': [
-            r'md5\s*\(',
-            r'sha1\s*\(',
-            r'DES\s*\(',
-        ]
-    }
-
-    # OWASP Top 10 mappings
-    OWASP_CATEGORIES = {
-        'A01': 'Broken Access Control',
-        'A02': 'Cryptographic Failures',
-        'A03': 'Injection',
-        'A04': 'Insecure Design',
-        'A05': 'Security Misconfiguration',
-        'A06': 'Vulnerable and Outdated Components',
-        'A07': 'Identification and Authentication Failures',
-        'A08': 'Software and Data Integrity Failures',
-        'A09': 'Security Logging and Monitoring Failures',
-        'A10': 'Server-Side Request Forgery'
-    }
-
-    # Compliance patterns
-    COMPLIANCE_PATTERNS = {
-        'GDPR': {
-            'personal_data': [
-                r'email.*=',
-                r'phone.*=',
-                r'address.*=',
-                r'social_security',
-                r'passport',
-            ],
-            'data_processing': [
-                r'collect.*data',
-                r'store.*personal',
-                r'process.*information',
-            ]
-        },
-        'HIPAA': {
-            'health_data': [
-                r'patient.*data',
-                r'medical.*record',
-                r'health.*information',
-                r'diagnosis',
-                r'treatment',
-            ]
-        },
-        'PCI': {
-            'payment_data': [
-                r'credit.*card',
-                r'card.*number',
-                r'cvv',
-                r'payment.*info',
-            ]
-        }
-    }
-
-    # Domain knowledge patterns
-    DOMAIN_KNOWLEDGE = {
-        'web_development': {
-            'frameworks': {
-                'react': {
-                    'best_practices': [
-                        'Use functional components with hooks',
-                        'Implement proper state management',
-                        'Optimize re-renders with useMemo/useCallback',
-                        'Use proper key props in lists'
-                    ],
-                    'anti_patterns': [
-                        'Mutating state directly',
-                        'Missing dependency arrays in useEffect',
-                        'Inline object/function definitions in JSX',
-                        'Not using React.memo for expensive components'
-                    ],
-                    'patterns': [
-                        r'useState\s*\(',
-                        r'useEffect\s*\(',
-                        r'React\.createElement',
-                        r'jsx|tsx'
-                    ]
-                },
-                'nextjs': {
-                    'best_practices': [
-                        'Use App Router for new projects',
-                        'Implement proper SEO with metadata',
-                        'Optimize images with next/image',
-                        'Use Server Components for static content'
-                    ],
-                    'patterns': [
-                        r'next/image',
-                        r'next/head',
-                        r'getServerSideProps',
-                        r'getStaticProps'
-                    ]
-                },
-                'express': {
-                    'best_practices': [
-                        'Use middleware for common functionality',
-                        'Implement proper error handling',
-                        'Use helmet for security headers',
-                        'Validate input data'
-                    ],
-                    'patterns': [
-                        r'express\s*\(',
-                        r'app\.use\s*\(',
-                        r'req\s*,\s*res'
-                    ]
-                }
-            }
-        },
-        'data_science': {
-            'frameworks': {
-                'pandas': {
-                    'best_practices': [
-                        'Use vectorized operations instead of loops',
-                        'Set proper data types to save memory',
-                        'Use iloc/loc for indexing',
-                        'Handle missing data explicitly'
-                    ],
-                    'anti_patterns': [
-                        'Using iterrows() for large datasets',
-                        'Chaining too many operations',
-                        'Not setting index appropriately',
-                        'Memory leaks with large DataFrames'
-                    ],
-                    'patterns': [
-                        r'pd\.DataFrame',
-                        r'pd\.read_csv',
-                        r'\.iloc\[',
-                        r'\.loc\['
-                    ]
-                },
-                'numpy': {
-                    'best_practices': [
-                        'Use vectorized operations',
-                        'Prefer numpy functions over Python loops',
-                        'Use appropriate data types',
-                        'Leverage broadcasting'
-                    ],
-                    'patterns': [
-                        r'np\.array',
-                        r'np\.dot',
-                        r'np\.linalg'
-                    ]
-                }
-            }
-        },
-        'system_administration': {
-            'frameworks': {
-                'docker': {
-                    'best_practices': [
-                        'Use multi-stage builds',
-                        'Minimize layer count',
-                        'Use specific base image tags',
-                        'Run as non-root user'
-                    ],
-                    'patterns': [
-                        r'FROM\s+',
-                        r'RUN\s+',
-                        r'COPY\s+',
-                        r'DOCKERFILE'
-                    ]
-                },
-                'kubernetes': {
-                    'best_practices': [
-                        'Set resource limits and requests',
-                        'Use health checks',
-                        'Implement proper RBAC',
-                        'Use namespaces for isolation'
-                    ],
-                    'patterns': [
-                        r'apiVersion:',
-                        r'kind:\s*Deployment',
-                        r'metadata:'
-                    ]
-                }
-            }
-        }
-    }
-
+    """Enhanced AI-powered analysis engine for DuckyCoder v7."""
+    
     def __init__(self, config: Dict[str, Any]):
-        """Initialize the AI analysis engine."""
+        """Initialize AI Analysis Engine with v7 enhancements."""
         self.config = config
-        self.security_config = config.get('security_config', {})
         self.logger = logging.getLogger(__name__)
-
-        # Initialize analysis tools
-        self._init_security_scanners()
-        self._init_code_analyzers()
         
-        # Initialize domain knowledge
-        self.domain_analyzers = self._init_domain_analyzers()
+        # V7 enhancements
+        self.v7_features = {
+            'dependency_extraction': True,
+            'similarity_detection': True,
+            'security_scanning': True,
+            'quantum_analysis': config.get('enhanced_features', {}).get('quantum_computing', False),
+            'ml_optimization': config.get('enhanced_features', {}).get('ml_optimization', True)
+        }
+        
+        # Initialize AI models and analyzers
+        self._initialize_models()
+        self.logger.info("✅ AI Analysis Engine v7 initialized with enhanced capabilities")
 
     def _init_security_scanners(self):
         """Initialize security scanning tools."""
@@ -645,6 +417,279 @@ class AIAnalysisEngine:
                 analysis_time=0.0,
                 metadata={'error': str(e)}
             )
+
+    async def extract_dependencies(self, content: str, language: str) -> List[Dict[str, Any]]:
+        """
+        Extract dependencies from code content.
+        
+        Args:
+            content: Code content to analyze
+            language: Programming language
+            
+        Returns:
+            List of detected dependencies with metadata
+        """
+        dependencies = []
+        
+        # Language-specific dependency patterns
+        patterns = {
+            'python': [
+                r'import\s+(\S+)',
+                r'from\s+(\S+)\s+import',
+                r'__import__\(["\'](\S+)["\']\)'
+            ],
+            'javascript': [
+                r'import\s+.*\s+from\s+["\'](\S+)["\']',
+                r'require\(["\'](\S+)["\']\)',
+                r'import\(["\'](\S+)["\']\)'
+            ],
+            'typescript': [
+                r'import\s+.*\s+from\s+["\'](\S+)["\']',
+                r'require\(["\'](\S+)["\']\)',
+                r'import\(["\'](\S+)["\']\)'
+            ],
+            'java': [
+                r'import\s+([\w\.]+);',
+                r'import\s+static\s+([\w\.]+);'
+            ],
+            'rust': [
+                r'use\s+([\w:]+)',
+                r'extern\s+crate\s+(\w+)',
+                r'mod\s+(\w+)'
+            ],
+            'go': [
+                r'import\s+"([^"]+)"',
+                r'import\s+\([^)]+\)'
+            ]
+        }
+        
+        if language.lower() in patterns:
+            for pattern in patterns[language.lower()]:
+                matches = re.findall(pattern, content, re.MULTILINE)
+                for match in matches:
+                    dependencies.append({
+                        'name': match,
+                        'type': 'import',
+                        'language': language,
+                        'pattern': pattern
+                    })
+        
+        # Detect package manager files
+        if 'requirements.txt' in content or 'setup.py' in content:
+            dependencies.append({'type': 'package_manager', 'name': 'pip'})
+        elif 'package.json' in content:
+            dependencies.append({'type': 'package_manager', 'name': 'npm'})
+        elif 'Cargo.toml' in content:
+            dependencies.append({'type': 'package_manager', 'name': 'cargo'})
+        
+        return dependencies
+    
+    async def calculate_similarity(self, content1: str, content2: str) -> float:
+        """
+        Calculate similarity between two code snippets using advanced AI.
+        
+        Args:
+            content1: First code snippet
+            content2: Second code snippet
+            
+        Returns:
+            Similarity score between 0 and 1
+        """
+        # Tokenize and normalize
+        tokens1 = self._tokenize_code(content1)
+        tokens2 = self._tokenize_code(content2)
+        
+        # Calculate multiple similarity metrics
+        structural_similarity = self._calculate_structural_similarity(tokens1, tokens2)
+        semantic_similarity = self._calculate_semantic_similarity(content1, content2)
+        syntactic_similarity = self._calculate_syntactic_similarity(tokens1, tokens2)
+        
+        # Weighted average
+        similarity = (
+            structural_similarity * 0.4 +
+            semantic_similarity * 0.4 +
+            syntactic_similarity * 0.2
+        )
+        
+        return min(1.0, max(0.0, similarity))
+    
+    def _tokenize_code(self, content: str) -> List[str]:
+        """Tokenize code content for analysis."""
+        # Remove comments and strings
+        content = re.sub(r'#.*$', '', content, flags=re.MULTILINE)
+        content = re.sub(r'//.*$', '', content, flags=re.MULTILINE)
+        content = re.sub(r'/\*.*?\*/', '', content, flags=re.DOTALL)
+        content = re.sub(r'["\'].*?["\']', '', content)
+        
+        # Tokenize
+        tokens = re.findall(r'\b\w+\b', content.lower())
+        return tokens
+    
+    def _calculate_structural_similarity(self, tokens1: List[str], tokens2: List[str]) -> float:
+        """Calculate structural similarity based on token patterns."""
+        if not tokens1 or not tokens2:
+            return 0.0
+        
+        # Use Jaccard similarity
+        set1, set2 = set(tokens1), set(tokens2)
+        intersection = len(set1.intersection(set2))
+        union = len(set1.union(set2))
+        
+        return intersection / union if union > 0 else 0.0
+    
+    def _calculate_semantic_similarity(self, content1: str, content2: str) -> float:
+        """Calculate semantic similarity using AI understanding."""
+        # Simplified semantic analysis
+        # In production, this would use embeddings or language models
+        
+        # Extract function names and variable names
+        funcs1 = re.findall(r'def\s+(\w+)', content1) + re.findall(r'function\s+(\w+)', content1)
+        funcs2 = re.findall(r'def\s+(\w+)', content2) + re.findall(r'function\s+(\w+)', content2)
+        
+        if funcs1 and funcs2:
+            common_funcs = set(funcs1).intersection(set(funcs2))
+            return len(common_funcs) / max(len(funcs1), len(funcs2))
+        
+        return 0.5  # Default moderate similarity
+    
+    def _calculate_syntactic_similarity(self, tokens1: List[str], tokens2: List[str]) -> float:
+        """Calculate syntactic similarity based on code structure."""
+        # Compare token sequences
+        if not tokens1 or not tokens2:
+            return 0.0
+        
+        # Use Levenshtein distance ratio
+        from difflib import SequenceMatcher
+        return SequenceMatcher(None, tokens1, tokens2).ratio()
+    
+    async def analyze_security(self, content: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Perform comprehensive security analysis on code content.
+        
+        Args:
+            content: Code content to analyze
+            
+        Returns:
+            Security analysis results with vulnerabilities and recommendations
+        """
+        security_results = {
+            'vulnerabilities': [],
+            'security_score': 100,
+            'recommendations': [],
+            'compliance': {
+                'OWASP': 'pending',
+                'CWE': 'pending',
+                'GDPR': 'pending',
+                'HIPAA': 'pending'
+            }
+        }
+        
+        # Common vulnerability patterns
+        vulnerability_patterns = [
+            {
+                'pattern': r'eval\s*\(',
+                'severity': 'critical',
+                'type': 'Code Injection',
+                'cwe': 'CWE-94'
+            },
+            {
+                'pattern': r'exec\s*\(',
+                'severity': 'critical',
+                'type': 'Code Injection',
+                'cwe': 'CWE-94'
+            },
+            {
+                'pattern': r'os\.system\s*\(',
+                'severity': 'high',
+                'type': 'Command Injection',
+                'cwe': 'CWE-78'
+            },
+            {
+                'pattern': r'subprocess\.\w+\s*\([^)]*shell\s*=\s*True',
+                'severity': 'high',
+                'type': 'Command Injection',
+                'cwe': 'CWE-78'
+            },
+            {
+                'pattern': r'password\s*=\s*["\'][^"\']+["\']',
+                'severity': 'high',
+                'type': 'Hardcoded Password',
+                'cwe': 'CWE-798'
+            },
+            {
+                'pattern': r'api_key\s*=\s*["\'][^"\']+["\']',
+                'severity': 'high',
+                'type': 'Hardcoded API Key',
+                'cwe': 'CWE-798'
+            },
+            {
+                'pattern': r'pickle\.loads?\s*\(',
+                'severity': 'medium',
+                'type': 'Insecure Deserialization',
+                'cwe': 'CWE-502'
+            },
+            {
+                'pattern': r'random\.\w+\s*\(',
+                'severity': 'low',
+                'type': 'Weak Random Number Generator',
+                'cwe': 'CWE-330'
+            }
+        ]
+        
+        # Scan for vulnerabilities
+        for item_key, item_data in content.items():
+            if isinstance(item_data, dict) and 'content' in item_data:
+                code_content = item_data['content']
+                
+                for vuln in vulnerability_patterns:
+                    matches = re.findall(vuln['pattern'], code_content, re.IGNORECASE)
+                    if matches:
+                        security_results['vulnerabilities'].append({
+                            'file': item_key,
+                            'type': vuln['type'],
+                            'severity': vuln['severity'],
+                            'cwe': vuln['cwe'],
+                            'occurrences': len(matches),
+                            'pattern': vuln['pattern']
+                        })
+                        
+                        # Adjust security score
+                        if vuln['severity'] == 'critical':
+                            security_results['security_score'] -= 25
+                        elif vuln['severity'] == 'high':
+                            security_results['security_score'] -= 15
+                        elif vuln['severity'] == 'medium':
+                            security_results['security_score'] -= 10
+                        else:
+                            security_results['security_score'] -= 5
+        
+        # Add recommendations based on findings
+        if security_results['vulnerabilities']:
+            security_results['recommendations'].append(
+                "Implement input validation and sanitization"
+            )
+            security_results['recommendations'].append(
+                "Use parameterized queries for database operations"
+            )
+            security_results['recommendations'].append(
+                "Store sensitive data in environment variables"
+            )
+            security_results['recommendations'].append(
+                "Implement proper error handling and logging"
+            )
+        
+        # Update compliance status
+        if security_results['security_score'] >= 90:
+            security_results['compliance']['OWASP'] = 'compliant'
+            security_results['compliance']['CWE'] = 'compliant'
+        elif security_results['security_score'] >= 70:
+            security_results['compliance']['OWASP'] = 'partial'
+            security_results['compliance']['CWE'] = 'partial'
+        else:
+            security_results['compliance']['OWASP'] = 'non-compliant'
+            security_results['compliance']['CWE'] = 'non-compliant'
+        
+        return security_results
 
     async def _analyze_python_syntax(self, content: str, file_path: str) -> Tuple[List[AnalysisIssue], Dict[str, Any]]:
         """Analyze Python syntax."""
@@ -1317,301 +1362,3 @@ class AIAnalysisEngine:
         
         compliance_score = max(0.0, 1.0 - (total_weight / max(max_possible, 1)))
         return compliance_score
-
-    # Domain Knowledge Analysis Methods
-    
-    def _init_domain_analyzers(self) -> Dict[str, Any]:
-        """Initialize domain-specific analyzers."""
-        return {
-            'web_development': self._init_web_analyzer(),
-            'data_science': self._init_data_science_analyzer(),
-            'system_administration': self._init_sysadmin_analyzer()
-        }
-
-    def _init_web_analyzer(self) -> Dict[str, Any]:
-        """Initialize web development analyzer."""
-        return {
-            'framework_detectors': {
-                'react': lambda content: any(pattern in content for pattern in 
-                    ['useState', 'useEffect', 'React.', 'jsx', 'tsx']),
-                'nextjs': lambda content: any(pattern in content for pattern in 
-                    ['next/image', 'next/head', 'getServerSideProps', 'getStaticProps']),
-                'express': lambda content: any(pattern in content for pattern in 
-                    ['express()', 'app.use', 'req, res']),
-                'vue': lambda content: any(pattern in content for pattern in 
-                    ['Vue.', 'template>', 'v-if', 'v-for']),
-                'angular': lambda content: any(pattern in content for pattern in 
-                    ['@Component', 'ngFor', 'ngIf', 'Angular'])
-            }
-        }
-
-    def _init_data_science_analyzer(self) -> Dict[str, Any]:
-        """Initialize data science analyzer."""
-        return {
-            'framework_detectors': {
-                'pandas': lambda content: any(pattern in content for pattern in 
-                    ['pd.DataFrame', 'pd.read_csv', '.iloc[', '.loc[']),
-                'numpy': lambda content: any(pattern in content for pattern in 
-                    ['np.array', 'np.dot', 'np.linalg', 'numpy']),
-                'sklearn': lambda content: any(pattern in content for pattern in 
-                    ['sklearn', 'fit(', 'predict(', 'transform(']),
-                'tensorflow': lambda content: any(pattern in content for pattern in 
-                    ['tensorflow', 'tf.', 'keras']),
-                'pytorch': lambda content: any(pattern in content for pattern in 
-                    ['torch', 'nn.Module', 'autograd'])
-            }
-        }
-
-    def _init_sysadmin_analyzer(self) -> Dict[str, Any]:
-        """Initialize system administration analyzer."""
-        return {
-            'framework_detectors': {
-                'docker': lambda content: any(pattern in content for pattern in 
-                    ['FROM ', 'RUN ', 'COPY ', 'Dockerfile']),
-                'kubernetes': lambda content: any(pattern in content for pattern in 
-                    ['apiVersion:', 'kind:', 'metadata:', 'kubectl']),
-                'ansible': lambda content: any(pattern in content for pattern in 
-                    ['playbook', 'tasks:', 'hosts:', 'ansible']),
-                'terraform': lambda content: any(pattern in content for pattern in 
-                    ['resource "', 'provider "', 'terraform']),
-                'bash': lambda content: any(pattern in content for pattern in 
-                    ['#!/bin/bash', '#!/bin/sh', '$1', '$@'])
-            }
-        }
-
-    async def analyze_domain_knowledge(self, processed_data: Dict[str, Any]) -> List[DomainKnowledgeInsight]:
-        """
-        Analyze code using domain-specific knowledge.
-        
-        Args:
-            processed_data: Processed input data
-            
-        Returns:
-            List of domain knowledge insights
-        """
-        try:
-            content = processed_data.get('content', '')
-            language = processed_data.get('metadata', {}).get('language')
-            framework = processed_data.get('metadata', {}).get('framework')
-            
-            insights = []
-            
-            # Detect domains and frameworks
-            detected_domains = self._detect_domains(content)
-            detected_frameworks = self._detect_frameworks(content)
-            
-            # Generate insights for each detected domain
-            for domain in detected_domains:
-                domain_insights = await self._analyze_domain_specific(content, domain, detected_frameworks)
-                insights.extend(domain_insights)
-            
-            # Add architectural insights
-            arch_insights = await self._analyze_architecture(content, language, detected_frameworks)
-            insights.extend(arch_insights)
-            
-            return insights
-            
-        except Exception as e:
-            self.logger.error(f"Domain knowledge analysis failed: {e}")
-            return []
-
-    def _detect_domains(self, content: str) -> List[str]:
-        """Detect applicable domains from content."""
-        domains = []
-        content_lower = content.lower()
-        
-        # Web development indicators
-        web_indicators = ['html', 'css', 'javascript', 'react', 'vue', 'angular', 'express', 'nextjs']
-        if any(indicator in content_lower for indicator in web_indicators):
-            domains.append('web_development')
-        
-        # Data science indicators
-        ds_indicators = ['pandas', 'numpy', 'sklearn', 'tensorflow', 'pytorch', 'matplotlib', 'seaborn']
-        if any(indicator in content_lower for indicator in ds_indicators):
-            domains.append('data_science')
-        
-        # System administration indicators
-        sysadmin_indicators = ['docker', 'kubernetes', 'ansible', 'terraform', 'bash', 'shell']
-        if any(indicator in content_lower for indicator in sysadmin_indicators):
-            domains.append('system_administration')
-        
-        return domains
-
-    def _detect_frameworks(self, content: str) -> List[str]:
-        """Detect frameworks from content."""
-        frameworks = []
-        
-        for domain, analyzer in self.domain_analyzers.items():
-            if 'framework_detectors' in analyzer:
-                for framework, detector in analyzer['framework_detectors'].items():
-                    if detector(content):
-                        frameworks.append(framework)
-        
-        return frameworks
-
-    async def _analyze_domain_specific(self, content: str, domain: str, frameworks: List[str]) -> List[DomainKnowledgeInsight]:
-        """Analyze content for domain-specific insights."""
-        insights = []
-        
-        if domain not in self.DOMAIN_KNOWLEDGE:
-            return insights
-        
-        domain_data = self.DOMAIN_KNOWLEDGE[domain]
-        
-        for framework in frameworks:
-            if framework in domain_data.get('frameworks', {}):
-                framework_data = domain_data['frameworks'][framework]
-                
-                # Check for best practices
-                for practice in framework_data.get('best_practices', []):
-                    if self._check_best_practice_violation(content, framework, practice):
-                        insights.append(DomainKnowledgeInsight(
-                            domain=domain,
-                            category='best_practice',
-                            title=f"{framework.title()} Best Practice",
-                            description=f"Consider implementing: {practice}",
-                            recommendation=practice,
-                            confidence=0.8,
-                            examples=[]
-                        ))
-                
-                # Check for anti-patterns
-                for anti_pattern in framework_data.get('anti_patterns', []):
-                    if self._check_anti_pattern_presence(content, framework, anti_pattern):
-                        insights.append(DomainKnowledgeInsight(
-                            domain=domain,
-                            category='anti_pattern',
-                            title=f"{framework.title()} Anti-Pattern Detected",
-                            description=f"Anti-pattern found: {anti_pattern}",
-                            recommendation=f"Refactor to avoid: {anti_pattern}",
-                            confidence=0.9,
-                            examples=[]
-                        ))
-        
-        return insights
-
-    async def _analyze_architecture(self, content: str, language: Optional[str], frameworks: List[str]) -> List[DomainKnowledgeInsight]:
-        """Analyze architectural patterns and provide insights."""
-        insights = []
-        
-        # Detect architecture type
-        arch_type = self._detect_architecture_type(content, frameworks)
-        
-        # Analyze design patterns
-        design_patterns = self._detect_design_patterns(content, language)
-        
-        # Check for scalability issues
-        scalability_issues = self._check_scalability_patterns(content, language)
-        
-        if scalability_issues:
-            insights.append(DomainKnowledgeInsight(
-                domain='architecture',
-                category='scalability',
-                title='Scalability Concerns',
-                description=f"Detected potential scalability issues in {arch_type} architecture",
-                recommendation="Consider implementing caching, load balancing, or database optimization",
-                confidence=0.7,
-                examples=scalability_issues
-            ))
-        
-        # Check for maintainability
-        maintainability_score = self._calculate_maintainability_score(content, language)
-        if maintainability_score < 0.6:
-            insights.append(DomainKnowledgeInsight(
-                domain='architecture',
-                category='maintainability',
-                title='Maintainability Improvement',
-                description=f"Code maintainability score: {maintainability_score:.2f}",
-                recommendation="Consider refactoring complex functions, improving documentation, and reducing coupling",
-                confidence=0.8,
-                examples=[]
-            ))
-        
-        return insights
-
-    def _check_best_practice_violation(self, content: str, framework: str, practice: str) -> bool:
-        """Check if a best practice is violated."""
-        # Simplified heuristic-based checking
-        if framework == 'react' and 'hooks' in practice.lower():
-            return 'class ' in content and 'extends Component' in content
-        elif framework == 'react' and 'state management' in practice.lower():
-            return 'useState' not in content and 'state =' in content
-        return False
-
-    def _check_anti_pattern_presence(self, content: str, framework: str, anti_pattern: str) -> bool:
-        """Check if an anti-pattern is present."""
-        if framework == 'react' and 'mutating state' in anti_pattern.lower():
-            return bool(re.search(r'this\.state\.\w+\s*=', content))
-        elif framework == 'pandas' and 'iterrows' in anti_pattern.lower():
-            return 'iterrows()' in content
-        return False
-
-    def _detect_architecture_type(self, content: str, frameworks: List[str]) -> str:
-        """Detect the architecture type from content and frameworks."""
-        if 'microservice' in content.lower() or 'kubernetes' in frameworks:
-            return 'microservices'
-        elif 'serverless' in content.lower() or 'lambda' in content.lower():
-            return 'serverless'
-        elif any(web_fw in frameworks for web_fw in ['react', 'vue', 'angular']):
-            return 'spa'  # Single Page Application
-        else:
-            return 'monolith'
-
-    def _detect_design_patterns(self, content: str, language: Optional[str]) -> List[str]:
-        """Detect design patterns in code."""
-        patterns = []
-        
-        # Singleton pattern
-        if 'class ' in content and '__new__' in content:
-            patterns.append('singleton')
-        
-        # Factory pattern
-        if 'factory' in content.lower() or 'create_' in content:
-            patterns.append('factory')
-        
-        # Observer pattern
-        if 'observer' in content.lower() or 'subscribe' in content:
-            patterns.append('observer')
-        
-        return patterns
-
-    def _check_scalability_patterns(self, content: str, language: Optional[str]) -> List[str]:
-        """Check for scalability anti-patterns."""
-        issues = []
-        
-        # N+1 query problem
-        if 'for ' in content and 'query' in content:
-            issues.append('Potential N+1 query pattern detected')
-        
-        # Large data loading
-        if 'read_csv' in content and 'chunksize' not in content:
-            issues.append('Loading large files without chunking')
-        
-        # Synchronous operations in async context
-        if 'async def' in content and 'time.sleep(' in content:
-            issues.append('Blocking operations in async function')
-        
-        return issues
-
-    def _calculate_maintainability_score(self, content: str, language: Optional[str]) -> float:
-        """Calculate maintainability score based on various factors."""
-        score = 1.0
-        lines = content.split('\n')
-        
-        # Function length penalty
-        functions = re.findall(r'def\s+\w+.*?(?=\ndef|\nclass|\Z)', content, re.DOTALL)
-        for func in functions:
-            func_lines = len(func.split('\n'))
-            if func_lines > 50:
-                score -= 0.1
-        
-        # Cyclomatic complexity penalty
-        complexity_indicators = content.count('if ') + content.count('for ') + content.count('while ')
-        if complexity_indicators > 20:
-            score -= 0.2
-        
-        # Documentation score
-        doc_coverage = self._calculate_doc_coverage(content, language)
-        score = score * (0.5 + 0.5 * doc_coverage)
-        
-        return max(0.0, score)

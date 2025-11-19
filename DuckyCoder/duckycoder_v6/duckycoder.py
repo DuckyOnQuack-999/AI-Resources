@@ -25,20 +25,7 @@ from analyzers.ai_analyzer import AIAnalysisEngine
 from enhancers.enhancement_engine import EnhancementEngine
 from ui_generators.mockup_generator import UIModelupGenerator
 from exporters.output_composer import OutputComposer
-from ml_optimizers.performance_optimizer import AdvancedPerformanceOptimizer
-
-# Advanced feature imports
-try:
-    from quantum.quantum_generator import QuantumCodeGenerator
-    HAS_QUANTUM = True
-except ImportError:
-    HAS_QUANTUM = False
-
-try:
-    from v0_integration.mdx_generator import MDXGenerator
-    HAS_V0_INTEGRATION = True
-except ImportError:
-    HAS_V0_INTEGRATION = False
+from ml_optimizers.performance_optimizer import PerformanceOptimizer
 
 __version__ = "6.0.0"
 __author__ = "DuckyOnQuack-999"
@@ -61,16 +48,7 @@ class DuckyCoderV6:
         self.enhancement_engine = EnhancementEngine(self.config)
         self.ui_generator = UIModelupGenerator(self.config)
         self.output_composer = OutputComposer(self.config)
-        self.ml_optimizer = AdvancedPerformanceOptimizer(self.config)
-        
-        # Initialize advanced features
-        self.quantum_generator = None
-        if HAS_QUANTUM and self.config.get('quantum_computing', {}).get('enabled', False):
-            self.quantum_generator = QuantumCodeGenerator(self.config)
-            
-        self.mdx_generator = None
-        if HAS_V0_INTEGRATION and self.config.get('v0_integration', {}).get('enabled', True):
-            self.mdx_generator = MDXGenerator(self.config)
+        self.ml_optimizer = PerformanceOptimizer(self.config)
         
         self.logger = logging.getLogger(__name__)
         
@@ -197,21 +175,12 @@ class DuckyCoderV6:
                         enhancements, analysis
                     )
                 
-                # Generate quantum algorithms if applicable and enabled
-                quantum_algorithms = None
-                if (self.quantum_generator and 
-                    self._detect_quantum_computing_content(original_data)):
-                    quantum_algorithms = await self._generate_quantum_algorithms(
-                        original_data, analysis
-                    )
-                
                 enhancement_results[input_key] = {
                     "original": original_data,
                     "enhanced": enhancements,
                     "fixes_applied": core_fixes.get("fixes", []),
                     "optimizations_applied": optimizations.get("optimizations", []),
                     "ui_mockups": ui_mockups,
-                    "quantum_algorithms": quantum_algorithms,
                     "confidence_score": self._calculate_enhancement_confidence(
                         core_fixes, optimizations, enhancements
                     )
@@ -358,82 +327,9 @@ class DuckyCoderV6:
         ui_indicators = [
             'tkinter', 'pyqt', 'kivy', 'egui', 'tui-rs', 'dioxus',
             'react', 'vue', 'angular', 'flutter', 'jsx', 'tsx',
-            'widget', 'window', 'button', 'layout', 'component',
-            'shadcn/ui', 'tailwind', 'lucide-react', 'next.js'
+            'widget', 'window', 'button', 'layout', 'component'
         ]
         return any(indicator in content for indicator in ui_indicators)
-    
-    def _detect_quantum_computing_content(self, data: Dict[str, Any]) -> bool:
-        """Detect if content contains quantum computing related concepts."""
-        content = data.get('content', '').lower()
-        quantum_indicators = [
-            'quantum', 'qiskit', 'qubit', 'superposition', 'entanglement',
-            'quantum circuit', 'grover', 'shor', 'quantum algorithm',
-            'quantum gate', 'quantum measurement', 'quantum fourier',
-            'variational quantum', 'qaoa', 'vqe'
-        ]
-        return any(indicator in content for indicator in quantum_indicators)
-    
-    async def _generate_quantum_algorithms(self, data: Dict[str, Any], 
-                                         analysis: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate quantum algorithms based on detected patterns."""
-        if not self.quantum_generator:
-            return None
-            
-        try:
-            content = data.get('content', '')
-            
-            # Detect algorithm types to generate
-            algorithms_to_generate = []
-            
-            if 'grover' in content.lower():
-                algorithms_to_generate.append({
-                    'type': 'grover_search',
-                    'params': {'num_qubits': 2}
-                })
-            
-            if 'fourier' in content.lower() or 'qft' in content.lower():
-                algorithms_to_generate.append({
-                    'type': 'quantum_fourier_transform',
-                    'params': {'num_qubits': 3}
-                })
-            
-            if 'vqe' in content.lower() or 'variational' in content.lower():
-                algorithms_to_generate.append({
-                    'type': 'variational_quantum_eigensolver',
-                    'params': {'num_qubits': 2}
-                })
-            
-            if 'qaoa' in content.lower() or 'optimization' in content.lower():
-                algorithms_to_generate.append({
-                    'type': 'quantum_approximate_optimization',
-                    'params': {'num_qubits': 2}
-                })
-            
-            # If no specific algorithms detected, generate a basic demo
-            if not algorithms_to_generate:
-                algorithms_to_generate.append({
-                    'type': 'grover_search',
-                    'params': {'num_qubits': 2}
-                })
-            
-            # Generate the algorithms
-            generated_algorithms = []
-            for algo_spec in algorithms_to_generate:
-                result = await self.quantum_generator.generate_algorithm(
-                    algo_spec['type'], algo_spec['params']
-                )
-                generated_algorithms.append(result)
-            
-            return {
-                'algorithms': generated_algorithms,
-                'total_generated': len(generated_algorithms),
-                'framework': 'qiskit'
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Quantum algorithm generation failed: {e}")
-            return {"error": str(e)}
     
     def _calculate_confidence(self, *analyses) -> float:
         """Calculate confidence score for analysis results."""
@@ -525,7 +421,7 @@ Examples:
         'ui_design', 'debug_assistant', 'api_validation', 'doc_generator'
     ], default='full_pipeline', help='Operational mode')
     process_parser.add_argument('--export', nargs='+', choices=[
-        'markdown', 'mdx', 'html', 'json', 'pdf', 'sarif', 'codebase', 'git_diff', 'react_project'
+        'markdown', 'html', 'json', 'pdf', 'sarif'
     ], default=['markdown'], help='Export formats')
     process_parser.add_argument('--ui-analysis', action='store_true',
                                help='Enable UI mockup generation')

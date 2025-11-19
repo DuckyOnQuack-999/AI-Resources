@@ -10,7 +10,6 @@ import os
 import re
 import requests
 import subprocess
-import io
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Union
 import logging
@@ -60,21 +59,6 @@ try:
 except ImportError:
     HAS_OCR = False
 
-# v0 Integration imports
-try:
-    import selenium
-    from selenium import webdriver
-    from selenium.webdriver.chrome.options import Options
-    HAS_SELENIUM = True
-except ImportError:
-    HAS_SELENIUM = False
-
-try:
-    import magic
-    HAS_MAGIC = True
-except ImportError:
-    HAS_MAGIC = False
-
 
 @dataclass
 class InputMetadata:
@@ -88,11 +72,6 @@ class InputMetadata:
     ui_detected: bool
     created_at: datetime
     checksum: str
-    mime_type: Optional[str] = None
-    is_binary: bool = False
-    is_v0_attachment: bool = False
-    screenshot_data: Optional[str] = None
-    extracted_text: Optional[str] = None
 
 
 @dataclass
@@ -135,24 +114,7 @@ class UniversalInputProcessor:
     
     SUPPORTED_DOCUMENT_EXTENSIONS = {
         '.md': 'markdown', '.txt': 'text', '.pdf': 'pdf',
-        '.docx': 'docx', '.ipynb': 'jupyter', '.rtf': 'rtf',
-        '.odt': 'odt', '.tex': 'latex'
-    }
-    
-    SUPPORTED_BINARY_EXTENSIONS = {
-        '.png': 'image', '.jpg': 'image', '.jpeg': 'image', '.gif': 'image',
-        '.bmp': 'image', '.tiff': 'image', '.svg': 'svg', '.webp': 'image',
-        '.zip': 'archive', '.tar': 'archive', '.gz': 'archive', '.rar': 'archive',
-        '.7z': 'archive', '.exe': 'executable', '.dll': 'library',
-        '.so': 'library', '.dylib': 'library', '.bin': 'binary'
-    }
-    
-    V0_ATTACHMENT_TYPES = {
-        'image': ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff', 'webp'],
-        'document': ['pdf', 'docx', 'txt', 'md'],
-        'code': ['py', 'js', 'ts', 'jsx', 'tsx', 'html', 'css'],
-        'data': ['json', 'yaml', 'csv', 'xml'],
-        'archive': ['zip', 'tar', 'gz']
+        '.docx': 'docx', '.ipynb': 'jupyter'
     }
     
     UI_FRAMEWORKS = {
@@ -180,13 +142,8 @@ class UniversalInputProcessor:
             **self.SUPPORTED_CODE_EXTENSIONS,
             **self.SUPPORTED_MARKUP_EXTENSIONS,
             **self.SUPPORTED_DATA_EXTENSIONS,
-            **self.SUPPORTED_DOCUMENT_EXTENSIONS,
-            **self.SUPPORTED_BINARY_EXTENSIONS
+            **self.SUPPORTED_DOCUMENT_EXTENSIONS
         }
-        
-        # v0 Integration settings
-        self.v0_config = config.get('v0_integration', {})
-        self.screenshot_enabled = self.v0_config.get('ui_features', {}).get('url_screenshots', False)
     
     async def process_input(self, input_source: str) -> ProcessedInput:
         """
@@ -207,7 +164,7 @@ class UniversalInputProcessor:
             elif os.path.isdir(input_source):
                 return await self._process_directory(input_source)
             else:
-                # Treat as content string or v0 attachment
+                # Treat as content string
                 return await self._process_content_string(input_source)
                 
         except Exception as e:
@@ -853,294 +810,3 @@ class UniversalInputProcessor:
             return int(size_str[:-2]) * 1024 * 1024 * 1024
         else:
             return int(size_str)
-
-    # v0 Integration Methods
-    
-    async def process_v0_attachment(self, attachment_data: Dict[str, Any]) -> ProcessedInput:
-        """
-        Process v0-style attachments with enhanced capabilities.
-        
-        Args:
-            attachment_data: Dictionary containing attachment info
-            
-        Returns:
-            ProcessedInput with v0-specific metadata
-        """
-        try:
-            attachment_type = attachment_data.get('type', 'unknown')
-            content = attachment_data.get('content', '')
-            filename = attachment_data.get('filename', 'attachment')
-            mime_type = attachment_data.get('mime_type', '')
-            
-            # Determine if this is a v0 attachment
-            is_v0_attachment = self._is_v0_attachment_type(filename, mime_type)
-            
-            # Process based on attachment type
-            if attachment_type == 'image':
-                return await self._process_v0_image_attachment(attachment_data)
-            elif attachment_type == 'url':
-                return await self._process_v0_url_attachment(attachment_data)
-            elif attachment_type == 'file':
-                return await self._process_v0_file_attachment(attachment_data)
-            else:
-                # Fallback to regular content processing
-                return await self._process_content_string(content)
-                
-        except Exception as e:
-            self.logger.error(f"Failed to process v0 attachment: {e}")
-            return self._create_error_input(str(e))
-
-    async def _process_v0_image_attachment(self, attachment_data: Dict[str, Any]) -> ProcessedInput:
-        """Process v0 image attachments with OCR."""
-        try:
-            image_data = attachment_data.get('content', '')
-            filename = attachment_data.get('filename', 'image')
-            
-            # Extract text from image if OCR is available
-            extracted_text = ""
-            if HAS_OCR and image_data:
-                try:
-                    # Decode base64 image data
-                    image_bytes = base64.b64decode(image_data)
-                    image = Image.open(io.BytesIO(image_bytes))
-                    extracted_text = pytesseract.image_to_string(image)
-                except Exception as e:
-                    self.logger.warning(f"OCR extraction failed: {e}")
-            
-            # Create metadata
-            metadata = InputMetadata(
-                file_path=filename,
-                file_type='image',
-                encoding='binary',
-                size=len(image_data) if image_data else 0,
-                language=None,
-                framework=None,
-                ui_detected=False,
-                created_at=datetime.now(),
-                checksum=hashlib.md5(image_data.encode() if image_data else b'').hexdigest(),
-                mime_type=attachment_data.get('mime_type', 'image/png'),
-                is_binary=True,
-                is_v0_attachment=True,
-                extracted_text=extracted_text
-            )
-            
-            return ProcessedInput(
-                content=extracted_text or f"[Image: {filename}]",
-                metadata=metadata,
-                raw_data=base64.b64decode(image_data) if image_data else None,
-                structured_data={'image_data': image_data, 'extracted_text': extracted_text},
-                dependencies=[],
-                imports=[],
-                ui_components=[],
-                error=None
-            )
-            
-        except Exception as e:
-            return self._create_error_input(f"Image processing failed: {e}")
-
-    async def _process_v0_url_attachment(self, attachment_data: Dict[str, Any]) -> ProcessedInput:
-        """Process v0 URL attachments with screenshot capability."""
-        try:
-            url = attachment_data.get('content', '')
-            
-            # First, try to process the URL normally
-            url_result = await self._process_url(url)
-            
-            # If screenshot is enabled and available, capture it
-            screenshot_data = None
-            if self.screenshot_enabled and HAS_SELENIUM:
-                screenshot_data = await self._capture_url_screenshot(url)
-                
-            # Update metadata to indicate v0 attachment
-            url_result.metadata.is_v0_attachment = True
-            url_result.metadata.screenshot_data = screenshot_data
-            
-            # Add screenshot info to structured data
-            if url_result.structured_data is None:
-                url_result.structured_data = {}
-            url_result.structured_data['screenshot_data'] = screenshot_data
-            
-            return url_result
-            
-        except Exception as e:
-            return self._create_error_input(f"URL attachment processing failed: {e}")
-
-    async def _process_v0_file_attachment(self, attachment_data: Dict[str, Any]) -> ProcessedInput:
-        """Process v0 file attachments."""
-        try:
-            content = attachment_data.get('content', '')
-            filename = attachment_data.get('filename', 'file')
-            mime_type = attachment_data.get('mime_type', '')
-            
-            # Create a temporary file for processing
-            import tempfile
-            with tempfile.NamedTemporaryFile(mode='w', suffix=Path(filename).suffix, delete=False) as tmp_file:
-                tmp_file.write(content)
-                tmp_path = tmp_file.name
-            
-            try:
-                # Process as regular file
-                result = await self._process_file(tmp_path)
-                
-                # Update metadata for v0 attachment
-                result.metadata.file_path = filename
-                result.metadata.is_v0_attachment = True
-                result.metadata.mime_type = mime_type
-                
-                return result
-            finally:
-                # Clean up temporary file
-                os.unlink(tmp_path)
-                
-        except Exception as e:
-            return self._create_error_input(f"File attachment processing failed: {e}")
-
-    async def _capture_url_screenshot(self, url: str) -> Optional[str]:
-        """Capture screenshot of URL using Selenium."""
-        if not HAS_SELENIUM:
-            return None
-            
-        try:
-            # Configure Chrome options for headless mode
-            chrome_options = Options()
-            chrome_options.add_argument('--headless')
-            chrome_options.add_argument('--no-sandbox')
-            chrome_options.add_argument('--disable-dev-shm-usage')
-            chrome_options.add_argument('--window-size=1920,1080')
-            
-            # Create webdriver
-            driver = webdriver.Chrome(options=chrome_options)
-            
-            try:
-                # Navigate to URL
-                driver.get(url)
-                
-                # Wait for page to load
-                await asyncio.sleep(2)
-                
-                # Take screenshot
-                screenshot = driver.get_screenshot_as_base64()
-                
-                return screenshot
-                
-            finally:
-                driver.quit()
-                
-        except Exception as e:
-            self.logger.warning(f"Screenshot capture failed for {url}: {e}")
-            return None
-
-    def _is_v0_attachment_type(self, filename: str, mime_type: str) -> bool:
-        """Check if this is a v0-compatible attachment type."""
-        extension = Path(filename).suffix.lower().lstrip('.')
-        
-        # Check against v0 attachment types
-        for category, extensions in self.V0_ATTACHMENT_TYPES.items():
-            if extension in extensions:
-                return True
-                
-        # Check mime type patterns
-        v0_mime_patterns = [
-            'image/', 'text/', 'application/json', 'application/pdf',
-            'application/zip', 'application/javascript'
-        ]
-        
-        return any(mime_type.startswith(pattern) for pattern in v0_mime_patterns)
-
-    async def _process_binary_file(self, file_path: Path) -> ProcessedInput:
-        """Enhanced binary file processing with metadata extraction."""
-        try:
-            with open(file_path, 'rb') as f:
-                raw_data = f.read()
-            
-            # Determine file type using magic library if available
-            file_type = 'binary'
-            mime_type = None
-            
-            if HAS_MAGIC:
-                try:
-                    mime_type = magic.from_buffer(raw_data, mime=True)
-                    file_type = magic.from_buffer(raw_data)
-                except Exception:
-                    pass
-            
-            # Try to extract metadata based on file type
-            extracted_content = ""
-            structured_data = {}
-            
-            if file_path.suffix.lower() in ['.png', '.jpg', '.jpeg', '.gif', '.bmp']:
-                # Image file processing
-                if HAS_OCR:
-                    try:
-                        image = Image.open(file_path)
-                        extracted_content = pytesseract.image_to_string(image)
-                        structured_data['image_dimensions'] = image.size
-                        structured_data['image_mode'] = image.mode
-                    except Exception as e:
-                        self.logger.warning(f"Image processing failed: {e}")
-                
-            elif file_path.suffix.lower() in ['.zip', '.tar', '.gz']:
-                # Archive file processing
-                extracted_content = f"[Archive: {file_path.name}]"
-                structured_data['archive_type'] = file_path.suffix.lower()
-                
-                if file_path.suffix.lower() == '.zip':
-                    try:
-                        with zipfile.ZipFile(file_path, 'r') as zip_file:
-                            structured_data['file_list'] = zip_file.namelist()
-                            extracted_content += f"\nContains {len(structured_data['file_list'])} files"
-                    except Exception:
-                        pass
-            
-            # Create metadata
-            metadata = InputMetadata(
-                file_path=str(file_path),
-                file_type=file_type,
-                encoding='binary',
-                size=len(raw_data),
-                language=None,
-                framework=None,
-                ui_detected=False,
-                created_at=datetime.now(),
-                checksum=hashlib.md5(raw_data).hexdigest(),
-                mime_type=mime_type,
-                is_binary=True,
-                extracted_text=extracted_content if extracted_content else None
-            )
-            
-            return ProcessedInput(
-                content=extracted_content or f"[Binary file: {file_path.name}]",
-                metadata=metadata,
-                raw_data=raw_data,
-                structured_data=structured_data,
-                dependencies=[],
-                imports=[],
-                ui_components=[],
-                error=None
-            )
-            
-        except Exception as e:
-            return self._create_error_input(f"Binary file processing failed: {e}")
-
-    def _create_error_input(self, error_message: str) -> ProcessedInput:
-        """Create a ProcessedInput object for error cases."""
-        return ProcessedInput(
-            content="",
-            metadata=InputMetadata(
-                file_path="error",
-                file_type="error",
-                encoding="unknown",
-                size=0,
-                language=None,
-                framework=None,
-                ui_detected=False,
-                created_at=datetime.now(),
-                checksum=""
-            ),
-            raw_data=None,
-            structured_data=None,
-            dependencies=[],
-            imports=[],
-            ui_components=[],
-            error=error_message
-        )
